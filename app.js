@@ -4,6 +4,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const date = require(__dirname + "/date.js");
 const mongoose = require("mongoose");
+const _ = require('lodash')
 
 const app = express();
 
@@ -11,7 +12,7 @@ app.set("view engine", "ejs");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
-mongoose.connect("mongodb://localhost:27017/todolistDB");
+mongoose.connect("mongodb+srv://elizawtw:database2022@cluster0.3dzjmm2.mongodb.net/todoDB");
 
 const itemsSchema = new mongoose.Schema({
   name: String,
@@ -44,13 +45,16 @@ const List = new mongoose.model("List", listSchema);
 
 app.get("/", function (req, res) {
   //check if there are default items in the database, if not, add items from database
-
-  Item.find({}, (err, foundItems) => {
+  
+  Item.find({}, function (err, foundItems){
+    
     if (foundItems.length === 0) {
+      
       Item.insertMany(defaultItems, (err) => {
         if (err) {
           console.log(err);
         } else {
+          console.log(foundItems)
           console.log("Successfully saved default items to DB.");
         }
       });
@@ -61,19 +65,19 @@ app.get("/", function (req, res) {
   });
 });
 
-app.get("/:customList", function (req, res) {
-  const customList = req.params.customList;
+app.get("/:customListName", function (req, res) {
+  const customListName = _.capitalize(req.params.customListName);
 
-  List.findOne({ name: customList }, function (err, foundList) {
+  List.findOne({ name: customListName }, function (err, foundList) {
     if (!err) {
       if (!foundList) {
         //create new list
         const list = new List({
-          name: customList,
+          name: customListName,
           items: defaultItems,
         });
         list.save();
-        res.redirect("/" + customList);
+        res.redirect("/" + customListName);
       } else {
         //show existing list
         res.render("list", {
@@ -97,29 +101,43 @@ app.post("/", function (req, res) {
     item.save();
     res.redirect("/");
   } else {
-    List.findOne({name: listName}, function(err, foundList) {
-      console.log(foundList)
+    List.findOne({ name: listName }, function (err, foundList) {
+      console.log("------",foundList);
       foundList.items.push(item);
+      console.log(foundList.items)
       foundList.save();
       res.redirect("/" + listName);
     });
-  };
+  }
 });
 
 app.post("/delete", function (req, res) {
   const checkedItemId = req.body.checkbox;
+  const listName = req.body.listName;
 
-  Item.findByIdAndRemove(checkedItemId, function (err) {
-    if (!err) {
-      res.redirect("/");
-    }
-  });
+  if (listName === "Today") {
+    Item.findByIdAndRemove(checkedItemId, function (err) {
+      if (!err) {
+        res.redirect("/");
+      }
+    });
+  } else {
+    List.findOneAndUpdate(
+      { name: listName },
+      { $pull: { items: { _id: checkedItemId } } },
+      function (err, foundList) {
+        if (!err) {
+          res.redirect("/" + listName);
+        }
+      }
+    );
+  }
 });
 
 app.get("/about", function (req, res) {
   res.render("about");
 });
 
-app.listen(5502, function () {
+app.listen(process.env.PORT || 5502, function () {
   console.log("Server started on port 5502");
 });
