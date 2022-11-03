@@ -36,13 +36,11 @@ const defaultItems = [item1, item2, item3];
 //List schema
 const listSchema = {
   name: String,
-  items: [itemsSchema]
+  items: [itemsSchema],
 };
 //create mongoose model
 
 const List = new mongoose.model("List", listSchema);
-
-
 
 app.get("/", function (req, res) {
   //check if there are default items in the database, if not, add items from database
@@ -56,59 +54,67 @@ app.get("/", function (req, res) {
           console.log("Successfully saved default items to DB.");
         }
       });
-      res.redirect("/")
+      res.redirect("/");
     } else {
       res.render("list", { listTitle: "Today", newListItems: foundItems });
     }
-    
   });
 });
 
-app.get("/:customList", function(req,res){
+app.get("/:customList", function (req, res) {
   const customList = req.params.customList;
-  
-List.findOne({name: customList}, function(err, foundList) {
-  if(!err) {
-    if(!foundList) {
-      //create new list
-      const list = new List( {
-        name: customList,
-        items: defaultItems
-      });
-      list.save()
-      res.redirect("/" + customList)
-    } else {
-      //show existing list
-      res.render("list", { listTitle: foundList.name, newListItems: foundList.items });
-    }
-  }
-})
 
-  
-})
+  List.findOne({ name: customList }, function (err, foundList) {
+    if (!err) {
+      if (!foundList) {
+        //create new list
+        const list = new List({
+          name: customList,
+          items: defaultItems,
+        });
+        list.save();
+        res.redirect("/" + customList);
+      } else {
+        //show existing list
+        res.render("list", {
+          listTitle: foundList.name,
+          newListItems: foundList.items,
+        });
+      }
+    }
+  });
+});
 
 app.post("/", function (req, res) {
   const itemName = req.body.newItem;
-  const item = new Item ({
-    name: itemName
-  })
+  const listName = req.body.list;
 
- item.save();
- res.redirect("/");
-  
+  const item = new Item({
+    name: itemName,
+  });
+
+  if (listName === "Today") {
+    item.save();
+    res.redirect("/");
+  } else {
+    List.findOne({name: listName}, function(err, foundList) {
+      console.log(foundList)
+      foundList.items.push(item);
+      foundList.save();
+      res.redirect("/" + listName);
+    });
+  };
 });
 
-app.post("/delete", function(req, res) {
-  const checkedItemId = req.body.checkbox
-  
-  Item.findByIdAndRemove(checkedItemId, function(err) {
-    if(!err) {
-      res.redirect("/")
-    } 
-  })
-})
+app.post("/delete", function (req, res) {
+  const checkedItemId = req.body.checkbox;
 
-
+  Item.findByIdAndRemove(checkedItemId, function (err) {
+    if (!err) {
+      res.redirect("/");
+    }
+  });
+});
 
 app.get("/about", function (req, res) {
   res.render("about");
