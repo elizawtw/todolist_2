@@ -1,5 +1,5 @@
 //jshint esversion:6
-
+require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const date = require(__dirname + "/date.js");
@@ -12,7 +12,7 @@ app.set("view engine", "ejs");
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
-mongoose.connect("mongodb+srv://elizawtw:database2022@cluster0.3dzjmm2.mongodb.net/todoDB");
+mongoose.connect(process.env.MONGO_URL);
 
 const itemsSchema = new mongoose.Schema({
   name: String,
